@@ -39,6 +39,20 @@ export default function OrderDetail() {
     load();
   }
 
+  async function createInvoice() {
+    try {
+      const { data } = await api.post('/invoices', {
+        orderId: id,
+        status: order.paymentStatus === 'PAID' ? 'PAID' : 'ISSUED',
+        taxPercent: 0,
+        discount: Number(order.discount || 0),
+      });
+      window.location.href = `/invoices/${data.data.id}`;
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not create invoice');
+    }
+  }
+
   if (!order) return <div className="loading">Loading order...</div>;
   const idx = FLOW.indexOf(order.status);
 
@@ -47,6 +61,7 @@ export default function OrderDetail() {
       <div className="toolbar">
         <Link className="btn btn-ghost" to="/orders">← Back</Link>
         <div className="toolbar-right">
+          <button className="btn btn-secondary" onClick={createInvoice}>Create Invoice</button>
           <button className="btn btn-danger" onClick={() => setStatus('CANCELLED')}>Cancel Order</button>
           <select className="select" value={order.assignedStaffId || ''} onChange={(e) => assignStaff(e.target.value)}>
             <option value="">Assign Staff</option>

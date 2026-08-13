@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
-export function Modal({ open, title, onClose, children, onSubmit, submitLabel = 'Save' }) {
+export function Modal({ open, title, onClose, children, onSubmit, submitLabel = 'Save', wide }) {
   if (!open) return null;
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal${wide ? ' modal-wide' : ''}`} onClick={(e) => e.stopPropagation()}>
         <h3 className="brand-font">{title}</h3>
         {children}
         <div className="modal-actions">

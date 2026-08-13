@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, Plus } from 'lucide-react';
+import { Eye, Plus, Trash2 } from 'lucide-react';
 import api, { fmtDate, inr, statusBadge } from '../lib/api';
 import { Modal, Pagination, useListState } from '../components/ui';
+
+const emptyLine = () => ({ productId: '', quantity: 1 });
 
 export default function Orders() {
   const { search, setSearch, status, setStatus, page, setPage } = useListState();
@@ -11,7 +13,15 @@ export default function Orders() {
   const [open, setOpen] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [form, setForm] = useState({ customerId: '', productId: '', quantity: 1, paymentMethod: 'UPI', shippingAddress: '', shippingCity: '', deliveryCharge: 199, discount: 0 });
+  const [form, setForm] = useState({
+    customerId: '',
+    paymentMethod: 'UPI',
+    shippingAddress: '',
+    shippingCity: '',
+    deliveryCharge: 199,
+    discount: 0,
+    items: [emptyLine()],
+  });
 
   async function load() {
     const { data } = await api.get('/orders', { params: { search, status, page, limit: 12 } });
@@ -28,10 +38,24 @@ export default function Orders() {
     ]);
     setCustomers(c.data.data);
     setProducts(p.data.data);
+    setForm({
+      customerId: '',
+      paymentMethod: 'UPI',
+      shippingAddress: '',
+      shippingCity: '',
+      deliveryCharge: 199,
+      discount: 0,
+      items: [emptyLine()],
+    });
     setOpen(true);
   }
 
   async function save() {
+    const items = form.items.filter((i) => i.productId);
+    if (!form.customerId || !items.length) {
+      alert('Select customer and at least one product');
+      return;
+    }
     await api.post('/orders', {
       customerId: form.customerId,
       paymentMethod: form.paymentMethod,
@@ -39,7 +63,7 @@ export default function Orders() {
       shippingCity: form.shippingCity,
       deliveryCharge: Number(form.deliveryCharge || 0),
       discount: Number(form.discount || 0),
-      items: [{ productId: form.productId, quantity: Number(form.quantity || 1) }],
+      items: items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity || 1) })),
     });
     setOpen(false);
     load();
@@ -95,7 +119,7 @@ export default function Orders() {
         </table>
       </div>
       <Pagination meta={meta} page={page} setPage={setPage} />
-      <Modal open={open} title="Create Order" onClose={() => setOpen(false)} onSubmit={save}>
+      <Modal open={open} title="Create Order" onClose={() => setOpen(false)} onSubmit={save} wide>
         <div className="form-group">
           <label>Customer</label>
           <select className="select" style={{ width: '100%' }} value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
@@ -103,21 +127,66 @@ export default function Orders() {
             {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <div className="form-group">
-          <label>Product</label>
-          <select className="select" style={{ width: '100%' }} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>
-            <option value="">Select</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({inr(p.price)})</option>)}
-          </select>
+
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <strong>Products</strong>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm({ ...form, items: [...form.items, emptyLine()] })}>
+              <Plus size={14} /> Add product
+            </button>
+          </div>
+          {form.items.map((line, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 36px', gap: 8, marginBottom: 8 }}>
+              <select
+                className="select"
+                value={line.productId}
+                onChange={(e) => {
+                  const items = form.items.map((row, i) => (i === idx ? { ...row, productId: e.target.value } : row));
+                  setForm({ ...form, items });
+                }}
+              >
+                <option value="">Select product</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({inr(p.price)})</option>)}
+              </select>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                value={line.quantity}
+                onChange={(e) => {
+                  const items = form.items.map((row, i) => (i === idx ? { ...row, quantity: e.target.value } : row));
+                  setForm({ ...form, items });
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={form.items.length === 1}
+                onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
         </div>
-        <div className="form-group"><label>Quantity</label><input className="input" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+
         <div className="form-group"><label>Shipping Address</label><input className="input" value={form.shippingAddress} onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })} /></div>
         <div className="form-group"><label>City</label><input className="input" value={form.shippingCity} onChange={(e) => setForm({ ...form, shippingCity: e.target.value })} /></div>
-        <div className="form-group">
-          <label>Payment Method</label>
-          <select className="select" style={{ width: '100%' }} value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
-            <option>UPI</option><option>Card</option><option>COD</option><option>Bank Transfer</option>
-          </select>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div className="form-group">
+            <label>Payment Method</label>
+            <select className="select" style={{ width: '100%' }} value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
+              <option>UPI</option><option>Card</option><option>COD</option><option>Bank Transfer</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Delivery</label>
+            <input className="input" type="number" value={form.deliveryCharge} onChange={(e) => setForm({ ...form, deliveryCharge: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Discount</label>
+            <input className="input" type="number" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
+          </div>
         </div>
       </Modal>
     </div>

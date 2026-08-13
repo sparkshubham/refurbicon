@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Package, Warehouse, TrendingUp, ShoppingCart, Users, ClipboardList,
   CreditCard, Truck, Shield, BarChart3, UserCog, CalendarCheck, CalendarOff, Wallet,
   Award, FileBarChart, UserRound, KeyRound, Settings, LogOut, Smartphone, Store,
+  FileText, Receipt,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +19,8 @@ const sections = [
       { to: '/inventory', icon: Warehouse, label: 'Inventory' },
       { to: '/sales', icon: TrendingUp, label: 'Sales' },
       { to: '/purchases', icon: ShoppingCart, label: 'Purchase' },
+      { to: '/invoices', icon: FileText, label: 'Invoices' },
+      { to: '/bills', icon: Receipt, label: 'Bills' },
       { to: '/customers', icon: Users, label: 'Customers' },
       { to: '/orders', icon: ClipboardList, label: 'Orders' },
       { to: '/payments', icon: CreditCard, label: 'Payments' },
@@ -53,6 +56,8 @@ const titles = {
   '/inventory': 'Inventory',
   '/sales': 'Sales',
   '/purchases': 'Purchase',
+  '/invoices': 'Invoices',
+  '/bills': 'Bills',
   '/customers': 'Customers',
   '/orders': 'Orders',
   '/payments': 'Payments',

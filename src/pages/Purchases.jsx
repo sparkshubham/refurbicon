@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import api, { fmtDate, inr, statusBadge } from '../lib/api';
 import { Modal, Pagination, useListState } from '../components/ui';
 
-const emptyPurchase = { supplierId: '', productId: '', quantity: 1, unitCost: 0, status: 'RECEIVED', notes: '' };
+const emptyLine = () => ({ productId: '', quantity: 1, unitCost: 0 });
 const emptySupplier = { name: '', email: '', phone: '', address: '' };
 
 export default function Purchases() {
@@ -14,7 +14,7 @@ export default function Purchases() {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
   const [supplierOpen, setSupplierOpen] = useState(false);
-  const [form, setForm] = useState(emptyPurchase);
+  const [form, setForm] = useState({ supplierId: '', status: 'RECEIVED', notes: '', items: [emptyLine()] });
   const [supplierForm, setSupplierForm] = useState(emptySupplier);
   const [editSupplierId, setEditSupplierId] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -33,15 +33,39 @@ export default function Purchases() {
 
   useEffect(() => { load().catch(console.error); }, [page, search, status]);
 
+  function updateLine(idx, patch) {
+    setForm((f) => {
+      const items = f.items.map((row, i) => {
+        if (i !== idx) return row;
+        const next = { ...row, ...patch };
+        if (patch.productId) {
+          const prod = products.find((p) => p.id === patch.productId);
+          if (prod) next.unitCost = Number(prod.costPrice || 0);
+        }
+        return next;
+      });
+      return { ...f, items };
+    });
+  }
+
   async function save() {
+    const items = form.items.filter((i) => i.productId);
+    if (!form.supplierId || !items.length) {
+      alert('Select supplier and at least one product');
+      return;
+    }
     await api.post('/purchases', {
       supplierId: form.supplierId,
       status: form.status,
       notes: form.notes,
-      items: [{ productId: form.productId, quantity: Number(form.quantity), unitCost: Number(form.unitCost) }],
+      items: items.map((i) => ({
+        productId: i.productId,
+        quantity: Number(i.quantity),
+        unitCost: Number(i.unitCost),
+      })),
     });
     setOpen(false);
-    setForm(emptyPurchase);
+    setForm({ supplierId: '', status: 'RECEIVED', notes: '', items: [emptyLine()] });
     load();
   }
 
@@ -63,6 +87,16 @@ export default function Purchases() {
   async function setPurchaseStatus(id, next) {
     await api.patch(`/purchases/${id}`, { status: next });
     load();
+  }
+
+  async function createBillFromPurchase(purchaseId) {
+    try {
+      const { data } = await api.post('/bills', { purchaseId, status: 'RECEIVED', applyStock: false, taxPercent: 18 });
+      alert(`Bill ${data.data.billNo} created`);
+      window.location.href = `/bills/${data.data.id}`;
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not create bill');
+    }
   }
 
   async function removeSupplier(id) {
@@ -96,7 +130,7 @@ export default function Purchases() {
           <button className="btn btn-secondary" onClick={() => { setEditSupplierId(null); setSupplierForm(emptySupplier); setSupplierOpen(true); }}>
             <Plus size={16} /> Supplier
           </button>
-          <button className="btn btn-primary" onClick={() => { setForm(emptyPurchase); setOpen(true); }}>
+          <button className="btn btn-primary" onClick={() => { setForm({ supplierId: '', status: 'RECEIVED', notes: '', items: [emptyLine()] }); setOpen(true); }}>
             <Plus size={16} /> New Purchase
           </button>
         </div>
@@ -120,6 +154,9 @@ export default function Purchases() {
                   <div className="row-actions">
                     {r.status === 'PENDING' && (
                       <button className="btn btn-primary btn-sm" onClick={() => setPurchaseStatus(r.id, 'RECEIVED')}>Receive</button>
+                    )}
+                    {r.status === 'RECEIVED' && (
+                      <button className="btn btn-secondary btn-sm" onClick={() => createBillFromPurchase(r.id)}>Create Bill</button>
                     )}
                     {r.status !== 'CANCELLED' && (
                       <button className="btn btn-ghost btn-sm" onClick={() => setPurchaseStatus(r.id, 'CANCELLED')}>Cancel</button>
@@ -163,7 +200,7 @@ export default function Purchases() {
         </table>
       </div>
 
-      <Modal open={open} title="Create Purchase" onClose={() => setOpen(false)} onSubmit={save}>
+      <Modal open={open} title="Create Purchase" onClose={() => setOpen(false)} onSubmit={save} wide>
         <div className="form-group">
           <label>Supplier</label>
           <select className="select" style={{ width: '100%' }} value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
@@ -171,17 +208,29 @@ export default function Purchases() {
             {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
-        <div className="form-group">
-          <label>Product</label>
-          <select className="select" style={{ width: '100%' }} value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })}>
-            <option value="">Select</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <strong>Products</strong>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm({ ...form, items: [...form.items, emptyLine()] })}>
+              <Plus size={14} /> Add product
+            </button>
+          </div>
+          {form.items.map((line, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 110px 36px', gap: 8, marginBottom: 8 }}>
+              <select className="select" value={line.productId} onChange={(e) => updateLine(idx, { productId: e.target.value })}>
+                <option value="">Select product</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <input className="input" type="number" min={1} value={line.quantity} onChange={(e) => updateLine(idx, { quantity: e.target.value })} />
+              <input className="input" type="number" value={line.unitCost} onChange={(e) => updateLine(idx, { unitCost: e.target.value })} />
+              <button type="button" className="btn btn-ghost btn-sm" disabled={form.items.length === 1} onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div className="form-group"><label>Qty</label><input className="input" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-          <div className="form-group"><label>Unit Cost</label><input className="input" type="number" value={form.unitCost} onChange={(e) => setForm({ ...form, unitCost: e.target.value })} /></div>
-        </div>
+
         <div className="form-group">
           <label>Status</label>
           <select className="select" style={{ width: '100%' }} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>

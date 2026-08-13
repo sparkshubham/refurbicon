@@ -14,6 +14,10 @@ import OrderDetail from './pages/OrderDetail';
 import Payments from './pages/Payments';
 import Deliveries from './pages/Deliveries';
 import Warranties from './pages/Warranties';
+import Invoices from './pages/Invoices';
+import InvoiceDetail from './pages/InvoiceDetail';
+import Bills from './pages/Bills';
+import BillDetail from './pages/BillDetail';
 import Reports from './pages/Reports';
 import Employees from './pages/Employees';
 import Attendance from './pages/Attendance';
@@ -77,6 +81,10 @@ export default function App() {
         <Route path="payments" element={<Payments />} />
         <Route path="deliveries" element={<Deliveries />} />
         <Route path="warranties" element={<Warranties />} />
+        <Route path="invoices" element={<Invoices />} />
+        <Route path="invoices/:id" element={<InvoiceDetail />} />
+        <Route path="bills" element={<Bills />} />
+        <Route path="bills/:id" element={<BillDetail />} />
         <Route path="reports" element={<Reports />} />
         <Route path="employees" element={<Employees />} />
         <Route path="attendance" element={<Attendance />} />
