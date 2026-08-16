@@ -18,6 +18,10 @@ import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
 import Bills from './pages/Bills';
 import BillDetail from './pages/BillDetail';
+import Tickets from './pages/Tickets';
+import TicketDetail from './pages/TicketDetail';
+import StaffPanel from './pages/StaffPanel';
+import StaffSalesReview from './pages/StaffSalesReview';
 import Reports from './pages/Reports';
 import Employees from './pages/Employees';
 import Attendance from './pages/Attendance';
@@ -41,6 +45,12 @@ function PrivateRoute({ children }) {
   if (loading) return <div className="loading">Loading REFURBICON...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
+}
+
+function HomeRedirect() {
+  const { user } = useAuth();
+  if (user?.role?.name === 'Staff') return <Navigate to="/staff-panel" replace />;
+  return <Dashboard />;
 }
 
 export default function App() {
@@ -69,7 +79,9 @@ export default function App() {
           </PrivateRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<HomeRedirect />} />
+        <Route path="staff-panel" element={<StaffPanel />} />
+        <Route path="staff-review" element={<StaffSalesReview />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:id" element={<ProductDetail />} />
         <Route path="inventory" element={<Inventory />} />
@@ -78,6 +90,8 @@ export default function App() {
         <Route path="customers" element={<Customers />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
+        <Route path="tickets" element={<Tickets />} />
+        <Route path="tickets/:id" element={<TicketDetail />} />
         <Route path="payments" element={<Payments />} />
         <Route path="deliveries" element={<Deliveries />} />
         <Route path="warranties" element={<Warranties />} />

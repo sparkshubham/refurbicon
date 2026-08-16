@@ -50,6 +50,7 @@ export default function Payslip() {
               ['HRA', p.hra],
               ['Conveyance', p.conveyance],
               ['Overtime', p.overtime],
+              ['Sales Bonus', p.bonus],
               ['Other Allowances', p.otherAllow],
             ].map(([l, v]) => (
               <div key={l} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
